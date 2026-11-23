@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magnetic Flux Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital@1&display=swap" rel="stylesheet">
+<style>
+/* VOICE: calm physics lab bench, precise, classroom-ready
+   IDEA: a copper wire loop held in a uniform field, like a demo rig
+   PICTURE: live 3D field lines threading a rotating loop, plus the cos graph
+   COLOUR and TYPE: field blue, copper loop, white ground; IBM Plex Sans with serif italic symbols
+   LAYOUT: modest title, big scene, controls and readouts beside it, ideas below */
+:root{color-scheme:light dark;
+--bg:light-dark(#ffffff,#0e1116);--panel:light-dark(#f3f5f9,#171b22);--ink:light-dark(#141821,#e8ebf1);
+--mute:light-dark(#5b6372,#9aa3b2);--line:light-dark(#d9dee8,#2a303b);
+--field:light-dark(#2f5bea,#6f93ff);--fieldf:light-dark(rgba(47,91,234,.22),rgba(111,147,255,.22));
+--cu:light-dark(#c4621d,#f08a3c);--bc:light-dark(#0a5cff,#5aa9ff);--bcf:light-dark(#e6efff,#13233d);--pc:light-dark(#e85d00,#ffa31a);--pcf:light-dark(#fff0e3,#33220f);--cuf:light-dark(rgba(196,98,29,.16),rgba(240,138,60,.18));--neg:light-dark(#b0228c,#ff6fcf)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "IBM Plex Sans",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(22px,3.5vw,48px) max(5vw,16px);max-width:1240px;margin:0 auto}
+h1{font-size:clamp(30px,4.4vw,46px);line-height:1.05;margin:0 0 8px;font-weight:600;text-wrap:balance}
+h2{font-size:24px;line-height:1.15;margin:0 0 14px;font-weight:600}
+.lead{color:var(--mute);max-width:66ch;margin:0}
+i.s,.s{font-family:"IBM Plex Serif",Georgia,serif;font-style:italic}
+.main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);grid-template-areas:'fig side' 'graph side';grid-template-rows:auto 1fr;gap:22px;margin-top:22px;align-items:start}
+.main>div:first-child{grid-area:fig}.side{grid-area:side}.gwrap{grid-area:graph}
+.fig{position:relative;min-height:440px;background:#0f141c;border-radius:14px;overflow:hidden;touch-action:pan-y}
+.fig>canvas{position:absolute;inset:0;width:100%;height:100%;cursor:grab}
+.views{position:absolute;left:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;z-index:2}
+.hint{position:absolute;right:12px;bottom:10px;font-size:13px;color:#9fb0c8;z-index:2}
+button{font:inherit;font-size:14px;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+input#B{accent-color:var(--bc)}input#S,input#T,input#N{accent-color:var(--pc)}
+.concept{font-size:15px}.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:10px}.cmp>div>b{display:block;font-size:16px}.cmp span{color:var(--mute)}.cb{color:var(--bc)}.cp{color:var(--pc)}
+.live{margin-top:8px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);min-height:44px}
+.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:14px}.duo .val{font-size:clamp(24px,2.3vw,28px)!important}
+.tB{background:var(--bcf)!important}.tB .val{color:var(--bc)!important}.tP{background:var(--pcf)!important}.tP .val{color:var(--pc)!important}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--field);outline-offset:2px}
+.side{display:flex;flex-direction:column;gap:14px}
+.big{background:var(--panel);border-radius:14px;padding:16px 18px}
+.big .eq{font-size:18px}.big .val{font-size:clamp(26px,3.2vw,36px);font-weight:600;line-height:1.1;color:var(--cu);white-space:nowrap}
+.big .sub{color:var(--mute);font-size:14px}
+.ctl{display:grid;gap:12px}
+.ctl label{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 10px;font-size:15px}
+.ctl output{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+input[type=range]{grid-column:1/-1;width:100%;height:32px;accent-color:var(--cu)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td{padding:6px 0;border-bottom:1px solid var(--line)}td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:500}
+.graph{position:relative;height:200px;background:var(--panel);border-radius:14px}
+.graph>canvas{position:absolute;inset:0;width:100%;height:100%}
+.work{margin-top:12px;font-size:16px;color:var(--ink);overflow-wrap:anywhere}
+.note{color:var(--neg);font-size:14px;margin:-4px 2px 0}.note:empty{display:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px}
+.card{background:var(--panel);border-radius:14px;padding:18px}
+.card h3{margin:0 0 6px;font-size:18px}.card p{margin:6px 0}
+.formula{font-size:20px;margin:8px 0}
+details{background:var(--panel);border-radius:14px;padding:14px 18px;margin-bottom:12px}
+summary{cursor:pointer;font-weight:500;min-height:28px}
+details p{margin:10px 0 2px}
+.key{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--mute);margin-top:10px}
+.key span::before{content:"";display:inline-block;width:18px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle;background:var(--c)}
+@media(max-width:860px){.main{grid-template-columns:minmax(0,1fr);grid-template-areas:'fig' 'side' 'graph'}.fig{min-height:360px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="band">
+  <h1>Magnetic flux and magnetic flux density</h1>
+  <p class="lead">The cyan probe square shows the flux density <i class="s">B</i>: how tightly the field lines are packed. The orange lines are the ones passing through the wire loop. Together they make up the magnetic flux <i class="s">Φ</i>. Change <i class="s">B</i> and both respond. Turn the loop and only <i class="s">Φ</i> changes.</p>
+
+  <div class="main">
+    <div>
+      <div class="fig" id="fig">
+        <div class="views">
+          <button id="v3d" aria-pressed="true">3D view</button>
+          <button id="vB" aria-pressed="false">Look along B</button>
+        </div>
+        <canvas id="scene" aria-label="Field lines passing through a rotating wire loop"></canvas>
+        <div class="hint" style="left:auto">Drag sideways to turn the view</div>
+      </div>
+      <div class="key">
+        <span style="--c:#2ef2ff"><i class="s">B</i> probe: a fixed square facing the field. Crowding of lines here shows <i class="s">B</i></span>
+        <span style="--c:#ff9a1f">lines threading the loop: their total is <i class="s">Φ</i></span>
+        <span style="--c:#ffd23f">wire loop and its normal <i class="s">n</i></span>
+      </div>
+    </div>
+    <div class="gwrap">
+      <div class="graph"><canvas id="graph" aria-label="Graph of flux against angle"></canvas></div>
+      <div class="work" id="work"></div>
+    </div>
+
+    <div class="side">
+      <div class="duo">
+        <div class="big tB">
+          <div class="eq">Flux density <i class="s">B</i></div>
+          <div class="val" id="bval">0</div>
+          <div class="sub" id="bSub"></div>
+        </div>
+        <div class="big tP">
+          <div class="eq">Magnetic flux <i class="s">Φ</i></div>
+          <div class="val" id="phi">0</div>
+          <div class="sub" id="phiSub"></div>
+        </div>
+      </div>
+      <div class="note" id="note"></div>
+      <div class="big concept">
+        <div class="cmp"><div><b class="cb"><i class="s">B</i> = how crowded</b><span>flux per square metre facing the field. A property of the <b>field</b> at a point.</span></div>
+        <div><b class="cp"><i class="s">Φ</i> = how much in total</b><span>all the field passing through one <b>surface</b> (the loop).</span></div></div>
+        <div class="formula" style="font-size:17px;margin:10px 0 4px"><i class="s">Φ</i> = <i class="s">B</i> × (area facing the field) = <i class="s">B</i> × <i class="s">A</i> cos <i class="s">θ</i></div>
+        <div class="live" id="live">Move a slider to see which quantity changes.</div>
+      </div>
+      <div class="big ctl">
+        <label for="B"><span>Flux density <i class="s">B</i></span><output id="oB"></output><input id="B" type="range" min="0.1" max="2" step="0.05" value="0.8"></label>
+        <label for="S"><span>Loop side length</span><output id="oS"></output><input id="S" type="range" min="10" max="30" step="1" value="20"></label>
+        <label for="T"><span>Angle <i class="s">θ</i> between <i class="s">B</i> and the normal</span><output id="oT"></output><input id="T" type="range" min="0" max="360" step="1" value="30"></label>
+        <label for="N"><span>Number of turns <i class="s">N</i></span><output id="oN"></output><input id="N" type="range" min="1" max="200" step="1" value="10"></label>
+        <div class="row">
+          <button id="spin" aria-pressed="false">Spin the loop</button>
+          <button data-t="0">θ = 0°</button>
+          <button data-t="60">60°</button>
+          <button data-t="90">90°</button>
+        </div>
+      </div>
+      <div class="big">
+        <table>
+          <tr><td>Loop area <i class="s">A</i></td><td id="rA"></td></tr>
+          <tr><td>Area perpendicular to <i class="s">B</i>, <i class="s">A</i> cos <i class="s">θ</i></td><td id="rAp"></td></tr>
+          <tr><td>Angle between <i class="s">B</i> and the loop's plane</td><td id="rAl"></td></tr>
+          <tr><td>Flux linkage <i class="s">N</i><i class="s">Φ</i></td><td id="rNL"></td></tr>
+          <tr><td>Field lines threading the loop (more lines, more flux)</td><td id="rC"></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="band">
+  <h2>The key ideas</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>Magnetic flux density, <i class="s">B</i></h3>
+      <p>The force per unit current per unit length on a straight conductor placed at right angles to the field.</p>
+      <div class="formula"><i class="s">B</i> = <i class="s">F</i> / (<i class="s">IL</i>)</div>
+      <p>Unit: tesla, T. 1 T = 1 N A<sup>−1</sup> m<sup>−1</sup> = 1 Wb m<sup>−2</sup>. On a diagram, <i class="s">B</i> is shown by how closely the field lines are packed. Increase <i class="s">B</i> above and the lines crowd together.</p>
+    </div>
+    <div class="card">
+      <h3>Magnetic flux, <i class="s">Φ</i></h3>
+      <p>The product of the flux density and the area perpendicular to the field.</p>
+      <div class="formula"><i class="s">Φ</i> = <i class="s">BA</i> cos <i class="s">θ</i></div>
+      <p>Unit: weber, Wb (1 Wb = 1 T m<sup>2</sup>). <i class="s">θ</i> is measured between <i class="s">B</i> and the <b>normal</b> to the loop. Flux is largest when the loop faces the field and zero when the field skims along its plane.</p>
+    </div>
+    <div class="card">
+      <h3>Flux linkage, <i class="s">N</i><i class="s">Φ</i></h3>
+      <p>A coil of <i class="s">N</i> turns links the flux <i class="s">N</i> times.</p>
+      <div class="formula">flux linkage = <i class="s">N</i><i class="s">Φ</i> = <i class="s">NBA</i> cos <i class="s">θ</i></div>
+      <p>Unit: Wb (sometimes written Wb-turns). This is the quantity whose rate of change gives the induced e.m.f. in Faraday's law.</p>
+    </div>
+    <div class="card">
+      <h3>Watch the angle</h3>
+      <p>Questions often give the angle <i class="s">α</i> between the field and the <b>plane</b> of the coil. Then <i class="s">θ</i> = 90° − <i class="s">α</i>, so</p>
+      <div class="formula"><i class="s">Φ</i> = <i class="s">BA</i> sin <i class="s">α</i></div>
+      <p>Press "Look along B": the loop's outline you see is exactly the perpendicular area <i class="s">A</i> cos <i class="s">θ</i>.</p>
+    </div>
+  </div>
+</div>
+
+<div class="band">
+  <h2>Check yourself</h2>
+  <details><summary>1. A coil of 200 turns and area 5.0 × 10<sup>−3</sup> m<sup>2</sup> sits with its plane perpendicular to a field of 0.40 T. Find the flux and the flux linkage.</summary>
+    <p>Plane perpendicular to <i class="s">B</i> means the normal is parallel to <i class="s">B</i>, so <i class="s">θ</i> = 0°.</p>
+    <p><i class="s">Φ</i> = <i class="s">BA</i> = 0.40 × 5.0 × 10<sup>−3</sup> = 2.0 × 10<sup>−3</sup> Wb</p>
+    <p><i class="s">N</i><i class="s">Φ</i> = 200 × 2.0 × 10<sup>−3</sup> = 0.40 Wb</p></details>
+  <details><summary>2. The same coil is turned so its plane makes 30° with the field. Find the new flux.</summary>
+    <p>Angle to the plane <i class="s">α</i> = 30°, so the angle to the normal <i class="s">θ</i> = 60°.</p>
+    <p><i class="s">Φ</i> = 0.40 × 5.0 × 10<sup>−3</sup> × cos 60° = 1.0 × 10<sup>−3</sup> Wb</p></details>
+  <details><summary>3. A flux of 3.0 mWb passes at right angles through an area of 0.015 m<sup>2</sup>. What is the flux density?</summary>
+    <p><i class="s">B</i> = <i class="s">Φ</i> / <i class="s">A</i> = 3.0 × 10<sup>−3</sup> / 0.015 = 0.20 T</p></details>
+  <details><summary>4. Through which angles does the flux become zero, and when is it negative?</summary>
+    <p>Zero at <i class="s">θ</i> = 90° and 270°, when the field lines run parallel to the loop's plane. Negative between 90° and 270°: the field now enters through the other face of the loop. Set the slider to 180° to see <i class="s">Φ</i> = −<i class="s">BA</i>.</p></details>
+</div>
+
+<script>
+{
+const $=id=>document.getElementById(id);
+const st={B:0.8,s:0.20,th:30,N:10,spin:false,yaw:0.55,pitch:0.32};
+const D0=0.04,L=0.26,XL=0.52,DEG=Math.PI/180;
+const RM=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cv=$('scene'),ctx=cv.getContext('2d'),gv=$('graph'),gx=gv.getContext('2d');
+let W=0,H=0,GW=0,GH=0,t0=performance.now(),flow=0,view={yaw:st.yaw,pitch:st.pitch};
+const probe=document.createElement('i');probe.style.display='none';document.body.appendChild(probe);
+const col=n=>{probe.style.color='var('+n+')';return getComputedStyle(probe).color};
+function fit(c,k){const r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);k.setTransform(d,0,0,d,0,0);return[r.width,r.height]}
+const roS=new ResizeObserver(()=>{[W,H]=fit(cv,ctx)});roS.observe(cv);
+const roG=new ResizeObserver(()=>{[GW,GH]=fit(gv,gx);drawGraph()});roG.observe(gv);
+function fmt(v,unit){const a=Math.abs(v);if(a<1e-12)return'0 '+unit;const e=Math.floor(Math.log10(a));
+  if(e>=-2&&e<3)return v.toPrecision(3).replace('-','−')+' '+unit;const m=(v/10**e).toFixed(2).replace('-','−');return m+' × 10<sup>'+(e<0?'−'+(-e):e)+'</sup> '+unit}
+function lattice(){const d=D0/Math.sqrt(st.B),n=2*Math.floor(L/d),o=(n-1)/2,p=[];for(let i=0;i<n;i++)for(let j=0;j<n;j++)p.push([(i-o)*d,(j-o)*d]);return p}
+function P(x,y,z){const cy=Math.cos(view.yaw),sy=Math.sin(view.yaw),x1=x*cy-z*sy,z1=x*sy+z*cy,cp=Math.cos(view.pitch),sp=Math.sin(view.pitch);
+  const y2=y*cp-z1*sp,sc=Math.min(W/(W<600?1.0:1.12),H/0.7);return[W/2+x1*sc,H/2-y2*sc]}
+function arrow(c,a,b,color,w,head){c.strokeStyle=color;c.fillStyle=color;c.lineWidth=w;c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.stroke();
+  const an=Math.atan2(b[1]-a[1],b[0]-a[0]);c.beginPath();c.moveTo(b[0],b[1]);c.lineTo(b[0]-head*Math.cos(an-0.4),b[1]-head*Math.sin(an-0.4));c.lineTo(b[0]-head*Math.cos(an+0.4),b[1]-head*Math.sin(an+0.4));c.closePath();c.fill()}
+function stats(){const th=st.th*DEG,c=Math.cos(th),A=st.s*st.s,phi=st.B*A*c;let n=0;const h=st.s/2;
+  for(const[y,z]of lattice())if(Math.abs(y)<h&&Math.abs(z)<h*Math.abs(c))n++;return{th,c,A,phi,n}}
+const SC={faint:'rgba(120,175,255,.28)',Bl:'#4da3ff',phi:'#ff9a1f',neg:'#ff4fd8',loop:'#ffd23f',probe:'#2ef2ff',ink:'#f2f5fa',dot:'rgba(255,255,255,.5)'};
+const PX=-0.40,PH=0.05,PY=-0.20;
+function seg(y,z,color,w,glow){const a=P(-XL,y,z),b=P(XL,y,z);ctx.strokeStyle=color;ctx.lineWidth=w;ctx.shadowColor=color;ctx.shadowBlur=glow||0;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();ctx.shadowBlur=0}
+function poly(q,fill,stroke,lw,dash){ctx.beginPath();q.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.setLineDash(dash||[]);ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.lineJoin='round';ctx.stroke();ctx.setLineDash([])}}
+function tag(x,y,html,color){ctx.font='600 15px "IBM Plex Sans",sans-serif';const w=ctx.measureText(html).width+16;x=Math.max(6,Math.min(W-w-6,x));y=Math.max(54,Math.min(H-40,y));
+  ctx.fillStyle='rgba(10,14,20,.88)';ctx.beginPath();ctx.roundRect(x,y-18,w,26,7);ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();ctx.fillStyle=color;ctx.fillText(html,x+8,y)}
+function drawScene(){if(!W)return;const S=stats(),h=st.s/2,sn=Math.sin(S.th),cs=S.c,pts=lattice(),pc=S.phi<0?SC.neg:SC.phi;
+  ctx.clearRect(0,0,W,H);ctx.lineCap='round';const thread=[],probe=[];
+  for(const[y,z]of pts){const inL=Math.abs(y)<h&&Math.abs(z)<h*Math.abs(cs),inP=Math.abs(y-PY)<PH&&Math.abs(z)<PH;
+    if(inL)thread.push([y,z]);else if(inP)probe.push([y,z]);else seg(y,z,SC.faint,1.2)}
+  for(const[y,z]of probe)seg(y,z,SC.Bl,2,6);
+  const pq=[P(PX,PY-PH,-PH),P(PX,PY+PH,-PH),P(PX,PY+PH,PH),P(PX,PY-PH,PH)];poly(pq,'rgba(46,242,255,.16)',SC.probe,2.5,[7,5]);
+  const w=[-sn,0,cs],corner=(a,b)=>P(b*w[0]*h,a*h,b*w[2]*h),q=[corner(-1,-1),corner(1,-1),corner(1,1),corner(-1,1)];
+  poly(q,S.phi<0?'rgba(255,79,216,.20)':'rgba(255,154,31,.22)');
+  for(const[y,z]of thread)seg(y,z,pc,2.4,10);
+  for(const[y,z]of pts){if(Math.abs(y-PY)<PH&&Math.abs(z)<PH){const k=P(PX,y,z);ctx.fillStyle=SC.probe;ctx.beginPath();ctx.arc(k[0],k[1],3.4,0,7);ctx.fill()}}
+  for(const[y,z]of thread){const xc=Math.abs(cs)>1e-6?-z*sn/cs:0,k=P(xc,y,z);ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(k[0],k[1],3.4,0,7);ctx.fill()}
+  const sp=0.13;ctx.fillStyle=SC.dot;for(const[y,z]of pts){for(let x=-XL+((flow*st.B*0.25)%sp);x<XL;x+=sp){const k=P(x,y,z);ctx.fillRect(k[0]-1.2,k[1]-1.2,2.4,2.4)}}
+  poly(q,null,SC.loop,4.5);
+  const o=P(0,0,0),nl=0.2,ne=P(nl*cs,0,nl*sn);ctx.setLineDash([6,5]);arrow(ctx,o,ne,SC.loop,2.5,11);ctx.setLineDash([]);
+  ctx.font='italic 600 18px "IBM Plex Serif",serif';ctx.fillStyle=SC.loop;ctx.fillText('n',ne[0]+6,ne[1]-6);
+  const r=0.085;ctx.strokeStyle=SC.ink;ctx.lineWidth=1.5;ctx.beginPath();const steps=Math.max(2,Math.round(Math.abs(st.th)/4));
+  for(let i=0;i<=steps;i++){const a=S.th*i/steps,p=P(r*Math.cos(a),0,r*Math.sin(a));i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])}ctx.stroke();
+  if(st.th>4&&st.th<356){const m=P(r*1.45*Math.cos(S.th/2),0,r*1.45*Math.sin(S.th/2));ctx.fillStyle=SC.ink;ctx.fillText('θ',m[0]-5,m[1]+6)}
+  const pt=P(PX,PY+PH,-PH),lt=[q[1],q[2]].sort((a,b)=>a[1]-b[1])[0],along=Math.hypot(P(1,0,0)[0]-o[0],P(1,0,0)[1]-o[1])<25;
+  tag(pt[0]-10,pt[1]-14,'B = '+st.B.toFixed(2)+' T',SC.probe);
+  tag(along?lt[0]+70:lt[0]+6,along?lt[1]-14:lt[1]-16,'Φ = '+fmtTxt(S.phi)+' Wb',pc);
+  const p0=o,p1=P(1,0,0),dl=Math.hypot(p1[0]-p0[0],p1[1]-p0[1])||1,ux=(p1[0]-p0[0])/dl,uy=(p1[1]-p0[1])/dl,ba=[28,H-34-Math.max(0,uy*60)],bb=[ba[0]+ux*60,ba[1]+uy*60];
+  ctx.fillStyle=SC.Bl;ctx.font='italic 600 20px "IBM Plex Serif",serif';if(dl<25){ctx.fillText('B',24,H-48);ctx.font='14px "IBM Plex Sans",sans-serif';ctx.fillText('points straight into the screen',42,H-50);return}
+  arrow(ctx,ba,bb,SC.Bl,3,12);ctx.fillText('B',bb[0]+8,bb[1]+7)}
+function fmtTxt(v){const a=Math.abs(v);if(a<1e-9)return'0';return(a>=0.01?v.toPrecision(3):v.toExponential(2)).replace('-','−')}
+function drawGraph(){if(!GW)return;const c=gx,pad={l:54,r:14,t:16,b:30},w=GW-pad.l-pad.r,hh=GH-pad.t-pad.b,ink=col('--ink'),mute=col('--mute'),line=col('--line'),cu=col('--pc');
+  c.clearRect(0,0,GW,GH);const max=st.B*st.s*st.s,X=t=>pad.l+t/360*w,Y=v=>pad.t+hh/2-v/max*hh/2;
+  c.strokeStyle=line;c.lineWidth=1;c.beginPath();c.moveTo(pad.l,Y(0));c.lineTo(pad.l+w,Y(0));c.moveTo(pad.l,pad.t);c.lineTo(pad.l,pad.t+hh);c.stroke();
+  c.fillStyle=mute;c.font='13px "IBM Plex Sans",sans-serif';c.textAlign='center';const ticks=GW<520?[0,180,360]:[0,90,180,270,360];
+  for(const t of ticks)c.fillText(t+'°',X(t),pad.t+hh+18);c.textAlign='right';
+  c.fillText('+BA',pad.l-6,Y(max)+4);c.fillText('0',pad.l-6,Y(0)+4);c.fillText('−BA',pad.l-6,Y(-max)+4);
+  c.textAlign='center';c.fillText('Φ against θ',X(180),pad.t+12);
+  c.strokeStyle=cu;c.lineWidth=2.5;c.beginPath();for(let t=0;t<=360;t+=2){const p=[X(t),Y(max*Math.cos(t*DEG))];t?c.lineTo(...p):c.moveTo(...p)}c.stroke();
+  const v=max*Math.cos(st.th*DEG);c.fillStyle=ink;c.beginPath();c.arc(X(st.th),Y(v),5.5,0,7);c.fill()}
+function deg(t){return Math.round(t)+'°'}
+function update(){const S=stats();$('oB').textContent=st.B.toFixed(2)+' T';$('oS').textContent=Math.round(st.s*100)+' cm';$('oT').textContent=deg(st.th);$('oN').textContent=st.N;
+  $('bval').textContent=st.B.toFixed(2)+' T';$('bSub').innerHTML='= '+st.B.toFixed(2)+' Wb m<sup>−2</sup>, flux per m<sup>2</sup> facing the field';$('phi').innerHTML=fmt(S.phi,'Wb');$('phiSub').innerHTML='= '+(S.phi*1000).toFixed(1).replace('-','−')+' mWb through the loop (max '+fmt(st.B*S.A,'Wb')+')';
+  const t=((st.th%360)+360)%360;$('note').textContent=Math.abs(S.c)<0.01?'Zero flux: the field runs parallel to the loop’s plane.':S.phi<0?'Negative flux: the field now enters through the other face.':'';
+  $('rA').innerHTML=fmt(S.A,'m<sup>2</sup>');$('rAp').innerHTML=fmt(S.A*S.c,'m<sup>2</sup>');
+  let al=90-t;if(al<-90)al+=180;if(al>90)al-=180;$('rAl').textContent=Math.abs(Math.round(al))+'°';
+  $('rNL').innerHTML=fmt(st.N*S.phi,'Wb');$('rC').textContent=S.n;
+  $('work').innerHTML='<i class="s">Φ</i> = <i class="s">BA</i> cos <i class="s">θ</i> = ('+st.B.toFixed(2)+' T)('+S.A.toFixed(4)+' m<sup>2</sup>)(cos '+deg(st.th)+') = '+fmt(S.phi,'Wb');
+  $('T').value=Math.round(st.th);drawGraph();if(RM)drawScene()}
+const MSG={B:'<b class="cb">B changed</b>: lines are packed more or less tightly, so <b class="cp">Φ changes too</b> (more lines through the same loop).',
+S:'<b class="cb">B stays the same</b>: the field is untouched. A bigger or smaller loop catches more or fewer lines, so <b class="cp">only Φ changes</b>.',
+T:'<b class="cb">B stays the same</b>: turning the loop does not change the field. The area facing the field changes, so <b class="cp">only Φ changes</b>.',
+N:'<b class="cb">B</b> and <b class="cp">Φ</b> both stay the same: Φ is per turn. Only the flux linkage NΦ changes.'};
+const bind=(id,fn)=>$(id).addEventListener('input',e=>{fn(+e.target.value);$('live').innerHTML=MSG[id];update()});
+bind('B',v=>st.B=v);bind('S',v=>st.s=v/100);bind('T',v=>{st.th=v;setSpin(false)});bind('N',v=>st.N=v);
+function setSpin(on){st.spin=on;$('spin').setAttribute('aria-pressed',on);$('spin').textContent=on?'Stop spinning':'Spin the loop'}
+$('spin').addEventListener('click',()=>{setSpin(!st.spin);if(st.spin)$('live').innerHTML=MSG.T;if(RM&&st.spin)tick(performance.now())});
+document.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click',()=>{setSpin(false);st.th=+b.dataset.t;update()}));
+let target=null;function setView(y,p,btn){target={yaw:y,pitch:p};$('v3d').setAttribute('aria-pressed',btn==='v3d');$('vB').setAttribute('aria-pressed',btn==='vB');if(RM){view={...target};target=null;drawScene()}}
+$('v3d').addEventListener('click',()=>setView(0.55,0.32,'v3d'));$('vB').addEventListener('click',()=>setView(-Math.PI/2,0,'vB'));
+let drag=null;cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,yaw:view.yaw};target=null});
+addEventListener('pointermove',e=>{if(!drag)return;view.yaw=drag.yaw-(e.clientX-drag.x)*0.008;if(RM)drawScene()});
+addEventListener('pointerup',()=>drag=null);addEventListener('pointercancel',()=>drag=null);
+function tick(now){const dt=Math.min(0.05,(now-t0)/1000);t0=now;
+  if(st.spin){st.th=(st.th+40*dt)%360;update()}
+  if(target){view.yaw+=(target.yaw-view.yaw)*Math.min(1,dt*6);view.pitch+=(target.pitch-view.pitch)*Math.min(1,dt*6);if(Math.abs(target.yaw-view.yaw)<1e-3&&Math.abs(target.pitch-view.pitch)<1e-3){view={...target};target=null}}
+  if(!RM)flow+=dt;drawScene();if(!RM||st.spin||target)requestAnimationFrame(tick)}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{drawGraph();drawScene()});
+new MutationObserver(()=>{drawGraph();drawScene()}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+update();requestAnimationFrame(tick);
+}
+</script>
+</body>
+</html>
